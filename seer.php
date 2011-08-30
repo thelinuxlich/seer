@@ -16,13 +16,16 @@ class Seer {
         return($this->execute_query($query,$commit));
     }
 
-    public function insert($table,$fields,$commit=false) {
+    public function insert($table,$fields,$commit=false,$returning=null) {
         $query = "INSERT INTO ".$table."(";
         $bindings = array();
         for($i = 0; $i < count($fields); $i++) {
             $bindings[] = ":FIELD_".$i;
         }
         $query .= join(",",array_keys($fields)).")VALUES(".join(",",$bindings).")";
+        if($returning != null) {
+            $query .= " RETURNING ".$returning." INTO :RET_FIELD";
+        }
         return $this->execute_query_with_bindings($query,array_values($fields),$commit);
     }
 
@@ -33,7 +36,7 @@ class Seer {
         $num_fields = count($fields);
         $i = 0;
         foreach($fields as $k=>$v) {
-            $bindings[] = $k." = ".":FIELD_".$i;
+            $bindings[] = strtoupper($k)." = ".":FIELD_".$i;
             $i++;
         }
         $query .= join(",",$bindings);
@@ -42,9 +45,10 @@ class Seer {
             $num_fields--;
             foreach($conditions as $k=>$v) {
                 $num_fields++;
-                $query .= $k." = :FIELD_".$num_fields;
+                $query .= strtoupper($k)." = :FIELD_".$num_fields." AND ";
                 $values[] = $v;
             }
+            $query = substr($query,0,-4);
         }
         return $this->execute_query_with_bindings($query,$values,$commit);
     }
@@ -94,11 +98,13 @@ class Seer {
         }
     }
 
-    public function datetotime($data,$euro=true) {
+    public function datetotime($data,$euro=true,$time_mod=null) {
         if($euro == true) {
             $data = split("/",$data);
             $data = $data[1]."/".$data[0]."/".$data[2];
-            return strtotime($data);
+        }
+        if($time_mod != null) {
+            return strtotime($time_mod,strtotime($data));
         } else {
             return strtotime($data);
         }
